@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
+	<script src="jquery-3.3.1.min.js"></script>
+	<script src="bootstrap/js/bootstrap.min.js"></script>
+	<style type="text/css">
+	    .div-range { display: inline-flex;}
+		.div-range input { width: 150px;}
+		.div-range span { padding-left: 12px;}
+		.form-control-sm{height: 20px; font-size: 12px; padding: 2px 8px;}
+		#relatorio{width: 100%;height: 100px;min-height: 125px;max-height: 125px;text-align: left; overflow-y: auto;}
+	</style>
+	<script type="text/javascript">
+		var width = 600;
+		var height = 600;
+		var halfW = width * 0.5;
+		var halfH = width * 0.5;
+		var canvas = null;
+		var ctx = null;
+
+		$(function(){
+			canvas = document.getElementById("canvas");
+			ctx = canvas.getContext("2d");
+			desenharRadar();
+			iniciar();
+
+			$('.carte').change(function(event) {
+				var posX = parseInt($(this).closest('tr').find('#campoX').val());
+				var posY = parseInt($(this).closest('tr').find('#campoY').val());
+
+				var raio = Math.sqrt(Math.pow(posX, 2) + Math.pow(posY, 2));
+				var angu = Math.atan(posY/posX) * (180 / Math.PI);
+
+				$(this).closest('tr').find('#campoR').val(raio.toFixed(4));
+				$(this).closest('tr').find('#campoA').val(angu.toFixed(4));
+			});
+
+			$('.polar').change(function(event) {
+				var raio = parseInt($(this).closest('tr').find('#campoR').val());
+				var angu = parseInt($(this).closest('tr').find('#campoA').val()) * (Math.PI / 180);
+		
+				var posX = raio * Math.cos(angu).toFixed(4);
+				var posY = raio * Math.sin(angu).toFixed(4);
+
+				$(this).closest('tr').find('#campoX').val(posX);
+				$(this).closest('tr').find('#campoY').val(posY);
+			});
+
+			$('.direc').change(function(event) {
+				if (parseInt($(this).val()) < 0) {
+					$(this).val('360');
+				}
+
+				if (parseInt($(this).val()) > 360) {
+					$(this).val('0');
+				}
+			});
+
+			$('input').change(function(event) {
+				iniciar();
+			});
+
+			//setInterval(function(){ iniciar(); }, 100);
+			//$('[id="campoA"]:first').trigger('change');
+		});
+
+		function desenharRadar(argument) {
+			
+			ctx.fillStyle = '#000000';
+			ctx.fillRect(0,0,width,height);
+			
+			ctx.beginPath();
+			ctx.lineWidth = 2;
+			ctx.strokeStyle = '#00FFAD';
+
+			ctx.moveTo(width/2,0);      
+			ctx.lineTo(width/2,height); 	
+
+			ctx.moveTo(0,height/2);     
+			ctx.lineTo(width,height/2); 
+
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.arc(halfW, halfH, 50, 0, Math.PI * 2, true); 
+			ctx.arc(halfW, halfH, 100, 0, Math.PI * 2, true);
+			ctx.arc(halfW, halfH, 150, 0, Math.PI * 2, true);
+			ctx.arc(halfW, halfH, 200, 0, Math.PI * 2, true);
+			ctx.arc(halfW, halfH, 250, 0, Math.PI * 2, true);
+			ctx.arc(halfW, halfH, 300, 0, Math.PI * 2, true);
+			ctx.arc(halfW, halfH, 350, 0, Math.PI * 2, true);
+			ctx.arc(halfW, halfH, 400, 0, Math.PI * 2, true);
+    		ctx.stroke();
+			ctx.closePath();
+			
+		}
+
+		function iniciar() {
+			var listaAvioes = [];
+			$('#tableAvioes > tbody > tr').each(function(index, el) {
+				listaAvioes[index] = {};
+				listaAvioes[index].posX = parseInt($(el).find('#campoX').val());
+				listaAvioes[index].posY = parseInt($(el).find('#campoY').val());
+				listaAvioes[index].aviD = parseInt($(el).find('#campoD').val());
+				listaAvioes[index].aviV = parseInt($(el).find('#campoV').val());
+				listaAvioes[index].aviC = $(el).find('#campoC').val();
+			});
+
+			addAvioes(listaAvioes);
+		}
+
+		function addAvioes(listaAvioes) {
+			desenharRadar();
+			var anguloXY = parseInt($('#anguloXY').val());
+			var posAngX  = halfW + parseInt($('#posAngX').val());
+			var posAngY  = halfH - parseInt($('#posAngY').val());
+			var transX   = parseInt($('#transX').val());
+			var transY   = parseInt($('#transY').val());
+			var escalaX  = parseInt($('#escalaX').val()) / 100;
+			var escalaY  = parseInt($('#escalaY').val()) / 100;
+			var dMinAero = parseInt($('#dMinAero').val());
+			var dMinAvi  = parseInt($('#dMinAvi').val());
+			var TmpMin   = parseInt($('#TmpMin').val());
+
+			$('#relatorio').html('');
+
+			$.each(listaAvioes, function(index1, avi1) {
+				var posX = halfW;
+				var posY = halfH;
+
+				ctx.save();
+
+				//Faz a Rotação
+				if (anguloXY > 0) {
+					ctx.translate(posAngX, posAngY);
+	  				ctx.rotate(((Math.PI / 180) * anguloXY) * -1);
+	  				ctx.translate(-posAngX, -posAngY);
+				}
+
+				//Faz a Translação
+				if (transX != 0 || transY != 0) {
+					posX += transX;
+					posY += transY * -1;
+				}
+
+				//Calcula Distancia e tempo para o ponto de Colisao
+
+	  			$.each(listaAvioes, function(index2, avi2) {
+					if (index2 > index1) {
+						var tan1 = Math.tan(Math.radians(avi1.aviD)).toFixed(4);
+						var tan2 = Math.tan(Math.radians(avi2.aviD)).toFixed(4);
+
+						var q1 = avi1.posY - (tan1 * avi1.posX);
+						var q2 = avi2.posY - (tan2 * avi2.posX);
+						
+						var x = Math.abs((q2-q1)/(tan2-tan1));
+						var y = (tan1 * x+q1);
+
+						var col1Quad = 0;
+						var col2Quad = 0;
+						var avi1Quad = 0;
+						var avi2Quad = 0;
+
+						//*************|| Colisão 1 ||*************//
+						
+						if (x >= avi1.posX && y >= avi1.posY) {
+							col1Quad = 1;	
+						} else if (x <= avi1.posX && y >= avi1.posY) {
+							col1Quad = 2;
+						} else if (x <= avi1.posX && y <= avi1.posY) {
+							col1Quad = 3;
+						} else if (x >= avi1.posX && y <= avi1.posY) {
+							col1Quad = 4;
+						}
+
+						//*************|| avião 1 ||*************//
+
+						if (avi1.aviD >= 0 && avi1.aviD < 90) {
+							avi1Quad = 1;
+						} else if (avi1.aviD >= 90 && avi1.aviD < 180) {
+							avi1Quad = 2;
+						} else if (avi1.aviD >= 180 && avi1.aviD < 270) {
+							avi1Quad = 3;
+						} else if (avi1.aviD >= 270 && avi1.aviD < 360) {
+							avi1Quad = 4;
+						}
+
+						//*************|| Colisão 2 ||*************//
+
+						if (x >= avi2.posX && y >= avi2.posY) {
+							col2Quad = 1;	
+						} else if (x <= avi2.posX && y >= avi2.posY) {
+							col2Quad = 2;
+						} else if (x <= avi2.posX && y <= avi2.posY) {
+							col2Quad = 3;
+						} else if (x >= avi2.posX && y <= avi2.posY) {
+							col2Quad = 4;
+						}
+
+						//*************|| avião 2 ||*************//
+
+						if (avi2.aviD >= 0 && avi2.aviD < 90) {
+							avi2Quad = 1;
+						} else if (avi2.aviD >= 90 && avi2.aviD < 180) {
+							avi2Quad = 2;
+						} else if (avi2.aviD >= 180 && avi2.aviD < 270) {
+							avi2Quad = 3;
+						} else if (avi2.aviD >= 270 && avi2.aviD < 360) {
+							avi2Quad = 4;
+						}
+
+						//***************************************//
+
+						//Calcula Distancia e Tempo Para Colisao
+						if (col1Quad == avi1Quad && col2Quad == avi2Quad) {
+							
+							var d1 = Math.sqrt(Math.pow((avi1.posX - x),2) + Math.pow((avi1.posY - y),2));
+							var d2 = Math.sqrt(Math.pow((avi2.posX - x),2) + Math.pow((avi2.posY - y),2));
+
+							var t1 = ((d1*10)/avi1.aviV);
+							var t2 = ((d2*10)/avi2.aviV);
+
+							//Imprime Tempo para Colisao  Entre Avioes
+							if (t1 < TmpMin || t2 < TmpMin) {
+								imprime('<span class="text-danger"> Aviões '+index1+' e '+index2+' estão em Rota de Colisão <span>(Tempo para Avião '+index1+' = '+t1.toFixed(2)+' / Tempo para Avião '+index2+' = '+t2.toFixed(2)+')<br>');
+							}
+
+							var colX = (posX + (x * escalaX));
+							var colY = (posY - (y * escalaY));
+
+							ctx.font = '24px Arial';
+							ctx.fillStyle = avi1.aviC;
+							ctx.textAlign = "center"; 
+				  			ctx.fillText('✹', colX-2, colY + 10);
+				  			ctx.font = '20px Arial';
+							ctx.fillStyle = avi2.aviC;
+							ctx.textAlign = "center"; 
+				  			ctx.fillText('✶', colX-2, colY + 9);
+						}
+
+						//Calcula e Imprime Distancia Entre Avioes
+						var dV = (Math.sqrt(Math.pow((avi1.posX - avi2.posX),2) + Math.pow((avi1.posY - avi2.posY),2))) * 10;
+
+						if (dV < dMinAvi) {
+							imprime('Aviões '+index1+' e '+index2+' estão a distancia de '+dV.toFixed(2)+' metros <br>');
+						}
+						//****************************************//
+					}
+				});
+
+				//Calcula e Imprime Distancia Entre Avioes e Aeroportos
+				
+				var dA = (Math.sqrt(Math.pow((avi1.posX - 0),2) + Math.pow((avi1.posY - 0),2))) * 10;
+				if (dA < dMinAero) {
+					imprime('Avião '+index1+' está a distancia de '+dA.toFixed(2)+' metros do Aeroporto<br>');
+				}
+
+	  			//Aplica direção nos Avioes
+	  			posX += (avi1.posX * escalaX);
+	  			posY -= (avi1.posY * escalaY);
+
+	  			ctx.translate(posX, posY);
+	  			ctx.rotate(((Math.PI / 180) * avi1.aviD) * -1);
+	  			ctx.translate(-posX, -posY);
+	  			
+	  			//Imprime os Avioes
+				ctx.font = '20px Arial';
+				ctx.fillStyle = avi1.aviC;
+				ctx.textAlign = "center";
+	  			ctx.fillText('✈', posX , posY+10);
+
+	  			ctx.restore();
+			});
+		}
+
+
+		function adicionar() {
+			$('#tableAvioes > tbody > tr:first').clone(true,true).find("input").val("").end().appendTo('#tableAvioes > tbody');
+		}
+
+		Math.radians = function(degrees) {
+		  return degrees * Math.PI / 180;
+		};
+		 
+		Math.degrees = function(radians) {
+		  return radians * 180 / Math.PI;
+		};
+
+		function imprime(msg) {
+			var texto = $('#relatorio').html();
+			texto += msg;
+			$('#relatorio').html(texto); 
+		}
+
+	</script>
+</head>
+<body>
+
+</body>
+</html>
+<body>
+<div class="container-fluid p-3">
+	<div class="row">
+		<div class="col-md-6">
+			<div class="table-responsive-sm">
+				<caption>
+					<button onclick="adicionar()" class="btn btn-success btn-sm" style="margin-bottom:10px;">Adicionar</button>
+				</caption>
+				<table id="tableAvioes" class="table table-striped table-bordered table-sm" style="font-size: 12px;">
+					<thead>
+						<tr>
+							<th width="14%">Cor</th>
+							<th width="14%">ponto X</th>
+							<th width="14%">ponto Y</th>
+							<th width="14%">Raio</th>
+							<th width="14%">Angulo</th>
+							<th width="14%">Direção</th>
+							<th width="14%">Velocidade</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<th><input type="color"  class="form-control form-control-sm" id="campoC" value="#ff0000"></th>
+							<th><input type="number" class="form-control form-control-sm carte" id="campoX" value="100"></th>
+							<th><input type="number" class="form-control form-control-sm carte" id="campoY" value="100"></th>
+							<th><input type="number" class="form-control form-control-sm polar" id="campoR"></th>
+							<th><input type="number" class="form-control form-control-sm polar" id="campoA"></th>
+							<th><input type="number" class="form-control form-control-sm direc" id="campoD" value="0"></th>
+							<th><input type="number" class="form-control form-control-sm" id="campoV" value="160"></th>
+						</tr>
+						<tr>
+							<th><input type="color"  class="form-control form-control-sm" id="campoC" value="#CCC000"></th>
+							<th><input type="number" class="form-control form-control-sm carte" id="campoX" value="150"></th>
+							<th><input type="number" class="form-control form-control-sm carte" id="campoY" value="150"></th>
+							<th><input type="number" class="form-control form-control-sm polar" id="campoR"></th>
+							<th><input type="number" class="form-control form-control-sm polar" id="campoA"></th>
+							<th><input type="number" class="form-control form-control-sm direc" id="campoD" value="271"></th>
+							<th><input type="number" class="form-control form-control-sm" id="campoV" value="160"></th>
+						</tr>
+						<tr>
+							<th><input type="color"  class="form-control form-control-sm" id="campoC" value="#00FFAD"></th>
+							<th><input type="number" class="form-control form-control-sm carte" id="campoX" value="0"></th>
+							<th><input type="number" class="form-control form-control-sm carte" id="campoY" value="87"></th>
+							<th><input type="number" class="form-control form-control-sm polar" id="campoR"></th>
+							<th><input type="number" class="form-control form-control-sm polar" id="campoA"></th>
+							<th><input type="number" class="form-control form-control-sm direc" id="campoD" value="15"></th>
+							<th><input type="number" class="form-control form-control-sm" id="campoV" value="160"></th>
+						</tr>
+					</tbody>
+					<tfoot>
+						<tr class="table-info">
+							<th colspan="7" class="text-center">Funções de Transformação</th>
+						</tr>
+						<tr>
+							<th colspan="4">&nbsp;</th>
+							<th>ponto X</th>
+							<th>ponto Y</th>
+							<th>Angulo</th>
+						</tr>
+						<tr>
+							<th colspan="4">Rotação</th>
+							<th><input type="number" class="form-control form-control-sm" id="posAngX" value="0"></th>
+							<th><input type="number" class="form-control form-control-sm" id="posAngY" value="0"></th>
+							<th><input type="number" class="form-control form-control-sm" id="anguloXY" value="0"></th>
+						</tr>
+						<tr>
+							<th colspan="4">Translação</th>
+							<th><input type="number" class="form-control form-control-sm" id="transX" value="0"></th>
+							<th><input type="number" class="form-control form-control-sm" id="transY" value="0"></th>
+							<th>&nbsp;</th>
+						</tr>
+						<tr>
+							<th colspan="4">Escalonação (%)</th>
+							<th><input type="number" class="form-control form-control-sm" id="escalaX" value="100"></th>
+							<th><input type="number" class="form-control form-control-sm" id="escalaY" value="100"></th>
+							<th>&nbsp;</th>
+						</tr>
+						<tr class="table-info">
+							<th colspan="7" class="text-center">Funções de Rastreamento</th>
+						</tr>
+						<tr>
+							<th colspan="6">&nbsp;</th>
+							<th>ponto X</th>
+						</tr>
+						<tr>
+							<th colspan="6">Distância Mínima (Aeroportos)</th>
+							<th><input type="number" class="form-control form-control-sm" id="dMinAero" value="500"></th>
+						</tr>
+						<tr>
+							<th colspan="6">Distância Mínima (Aviões)</th>
+							<th><input type="number" class="form-control form-control-sm" id="dMinAvi" value="500"></th>
+						</tr>
+						<tr>
+							<th colspan="6">Tempo Mínimo</th>
+							<th><input type="number" class="form-control form-control-sm" id="TmpMin" value="10"></th>
+						</tr>
+						<tr class="table-info">
+							<th colspan="7" class="text-center">Relatório</th>
+						</tr>
+						<tr>
+							<th colspan="7" class="text-center">
+								<div id="relatorio"></div>
+							</th>
+						</tr>
+					</tfoot>
+				</table>
+			</div>
+		</div>
+		<div class="col-md-6">
+			<div>
+				<canvas id="canvas" width="600" height="600">Seu browser n&atilde;o suporta canvas!</canvas>
+			</div>
+		</div>
+	</div>
+</div>
+</body>
